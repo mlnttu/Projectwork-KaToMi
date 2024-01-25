@@ -1,0 +1,29 @@
+# Owner MinttuS 18.12.2023, KariE modified 21.12.2023
+# Import datetime module to get the current date to modify the format of the dispensing schedule
+# Import choose_all_log_entries module to retrieve dispensing times from the database
+
+import datetime
+from database_functions import choose_all_log_entries
+
+def change_dispensing_times():
+    # Retrieve the schedule from the database
+    dispensing_times = choose_all_log_entries()
+
+    # Retrieve system date for the configuration of the epoch
+    now_datetime = datetime.datetime.now()
+
+    # First change the format of the dispensing times from time to datetime and add them into a list
+    given_times = []
+
+    for dispensing_time in dispensing_times:
+        given_time = datetime.datetime.strptime(f"{now_datetime.date()} {dispensing_time}", "%Y-%m-%d %H:%M")
+        given_times.append(given_time)
+
+    # Then change the format of the dispensing times from datetime to epoch and add them into another list
+    epoch_timestamps = []
+
+    for given_time in given_times:
+        epoch_timestamp = int(given_time.timestamp())
+        epoch_timestamps.append(epoch_timestamp)
+        
+    return epoch_timestamps
