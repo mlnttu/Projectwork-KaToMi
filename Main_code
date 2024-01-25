@@ -1,0 +1,129 @@
+# Import GPIO to control Raspberry PI pins
+# Import time and datetime to add delay and date to change current date
+# Import module change_dispensing_schedule to retrieve the schedule from the database and to change it's type from (date)time to epoch
+# Import module create_log_entry to create a log entry into the database of what time a drug was dispensed and was the dispensing successful or not
+
+import RPi.GPIO as GPIO
+import time
+from datetime import datetime
+from change_dispensing_schedule import change_dispensing_times
+from database_functions import create_log_entry
+
+# Define Raspberry PI pins for IR-sensor, buzzer and LED-light
+# Set pins as INPUT or OUTPUT
+
+GPIO.setmode(GPIO.BCM)
+
+sensor = 6
+buzzer = 26
+led = 16
+this_day = 99
+sleep = 5
+
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(sensor,GPIO.IN)
+GPIO.setup(buzzer,GPIO.OUT)
+GPIO.setup(led, GPIO.OUT)
+
+GPIO.output(buzzer, 0)
+GPIO.output(led, 0)
+
+# Define Raspberry PI pins for stepmotor
+# Set them as OUTPUT with for-loop
+
+control_pin = [17, 27, 22, 5]
+
+for pin in control_pin:
+    GPIO.setup(pin, GPIO.OUT)
+    GPIO.output(pin, 0)
+
+# Timer-function
+# Current time and set times are modified to epoch and integer previously
+# These are now easier to compare in if-loop. If times are same, the function rotating_motor is called
+# Loop waits for a set time so that the object has enough time to move close to the sensor
+# The function ir_sensor is called
+
+def timer(current_epoch):
+	for epoch in epochs:
+		if current_epoch == epoch:
+			print("Tavoiteaika", nyt1.strftime("%Y-%m-%d %H:%M"), "on saavutettu")
+			rotating_motor()
+			time.sleep(sleep)
+			status = ir_sensor()
+			time_GMT = nyt1.strftime("%Y-%m-%d %H:%M")
+			entry = (status, epoch, time_GMT)
+			create_log_entry(entry)
+
+# Motor-function
+# Set stepmotors step sequence as array
+# In for-loop step motor coils are turned on one by one, which rotates the motor
+
+def rotating_motor():
+	seq = [
+		[1,0,0,0],
+		[1,1,0,0],
+		[0,1,0,0],
+		[0,1,1,0],
+		[0,0,1,0],
+		[0,0,1,1],
+		[0,0,0,1],
+		[1,0,0,1]
+	]
+
+	for i in range(34):
+		for halfstep in range(8):
+			for pin in range(4):
+				GPIO.output(control_pin[pin], seq[halfstep][pin])
+			time.sleep(0.001)
+		
+# IR-sensor-function
+# If the IR-sensor detects the object, it sets LOW and buzzer and LED sets HIGH
+
+def ir_sensor():
+	if GPIO.input(sensor) == 1:
+		print("Lääkettä ei annosteltu")
+		return "Lääkettä ei annosteltu"
+	
+	now_epoch = round(time.time())
+
+	while True:
+		if GPIO.input(sensor) == 0:
+			GPIO.output(buzzer,1)
+			GPIO.output(led, 1)
+			while GPIO.input(sensor) == 0:
+				time.sleep(0.2)
+				if (round(time.time()) - now_epoch) == 10:
+					GPIO.output(buzzer, 0)
+					GPIO.output(led, 0)
+					print("Lääkettä ei otettu")
+					return "Lääkettä ei otettu"
+		else:
+			GPIO.output(buzzer, 0)
+			GPIO.output(led, 0)
+			print("Lääke otettu")
+			return "Lääke otettu"
+
+# Main-loop
+# If-sentence, if nyt1 is different from this_day, new epoch-times are returned from the module change_dispensing_schedule
+# this_day is set to be same with nyt1, so if-sentence doesn't go through every second
+# If-sentence is used, so at midnight nyt1 changes to next date and next day epoch-times are returned
+
+# Define current epoch-time from computer system with time.time()
+# Rounded and changed to int-variable
+# Call and go through timer-function, sleep 1 second
+
+while True:
+	nyt1 = datetime.now()
+
+	if int(nyt1.strftime("%d")) != this_day:
+		epochs = change_dispensing_times()
+
+		this_day = int(nyt1.strftime("%d"))
+
+	seconds = time.time()
+	current_epoch = round(seconds)
+		
+	timer(current_epoch)
+	time.sleep(1)
+
+GPIO.cleanup()
