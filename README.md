@@ -10,6 +10,6 @@ The project served as a valuable lesson in how programming, especially close to 
 The concept of the project's dispensing device was implemented using a Raspberry Pi 4 computer, along with a 5V stepper motor and an FC-51 IR sensor. The Raspberry's code was written in Python. The mobile application code was developed in Java using Android Studio. The database was implemented with SQLite.
 
 Project members:
-Minttu Simula
-Kari Ervasti
+Minttu Simula,
+Kari Ervasti,
 Toni Taikina-aho
