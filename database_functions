@@ -1,0 +1,47 @@
+# Owner KariE 27.12.2023
+
+import sqlite3
+from sqlite3 import Error
+
+def create_conn(database):
+    conn = None
+    try:
+        conn = sqlite3.connect(database)
+    except Error as e:
+        print(e)
+
+    return conn
+
+def create_log_entry(entry):
+    database = r"/home/pi/katomi/dispenser_database.db"
+
+    # Create connection
+    conn = create_conn(database)
+    
+    # Create a new entry
+    sql = ''' INSERT INTO Annosteluloki (LaiteID, Status, Aikaleima, Aika)
+              VALUES (1,?,?,?) '''
+    cur = conn.cursor()
+    cur.execute(sql, entry)
+    conn.commit()
+
+    return cur.lastrowid
+
+def choose_all_log_entries():
+    database = r"/home/pi/katomi/dispenser_database.db"
+
+    # Create connection
+    conn = create_conn(database)
+
+    # Retrieve the dispensing schedule
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM Annosteluaika")
+
+    rows = cur.fetchall()
+
+    times = []
+
+    for row in rows:
+        times.append(row[1])
+    
+    return times
